@@ -1,7 +1,7 @@
-use core::ptr::Unique;
 use core::fmt;
-use cpuio::outb;
+use core::ptr::Unique;
 use spin::Mutex;
+use cpuio::outb;
 
 /// The buffer width.
 const BUFFER_WIDTH: usize = 80;
@@ -64,7 +64,7 @@ impl CompositeColor {
     /// Constructs a new `CompositeColor` from two colors.
     #[inline(always)]
     pub const fn new(fc: Color, bc: Color) -> CompositeColor {
-        CompositeColor((fc as u8) << 4 | (bc as u8))
+        CompositeColor((bc as u8) << 4 | (fc as u8))
     }
 }
 
@@ -103,6 +103,30 @@ pub struct TextWriter {
 
 /// Implements `TextWriter`.
 impl TextWriter {
+    /// Binds the console.
+    pub fn bind<F>(&mut self, f: F)
+        where F: FnOnce(&mut TextWriter)
+    {
+        f(self);
+    }
+    /// Clears the buffer.
+    pub fn clear(&mut self) {
+        self.x = 0;
+        self.y = 0;
+        {
+            let chr = CharacterCell::new(b' ', self.color);
+            self.buffer(|buf| {
+                for off in 0..BUFFER_SIZE {
+                    buf.chars[off] = chr;
+                }
+            });
+        }
+        self.relocate_cursor();
+    }
+    /// Sets the color.
+    pub fn color(&mut self, color: CompositeColor) {
+        self.color = color;
+    }
     /// Writes an ASCII character to the screen.
     fn write_byte(&mut self, byte: u8) {
         match byte {
@@ -163,20 +187,6 @@ impl TextWriter {
                 buf.chars[TextWriter::offset(x, BUFFER_HEIGHT - 1)] = chr;
             }
         });
-    }
-    /// Clears the buffer.
-    pub fn clear(&mut self) {
-        self.x = 0;
-        self.y = 0;
-        {
-            let chr = CharacterCell::new(b' ', self.color);
-            self.buffer(|buf| {
-                for off in 0..BUFFER_SIZE {
-                    buf.chars[off] = chr;
-                }
-            });
-        }
-        self.relocate_cursor();
     }
     /// Relocates the hardware cursor.
     fn relocate_cursor(&mut self) {
