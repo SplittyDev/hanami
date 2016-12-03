@@ -19,7 +19,7 @@ target/boot.o: $(ASMDIR)/boot.asm
 	nasm -felf64 $(ASMDIR)/boot.asm -o target/boot.o
 
 target/$(KERNEL).bin: cargo target/boot.o
-	ld -n -o target/$(KERNEL).bin -T $(CFGDIR)/linker.ld target/boot.o target/$(TRIPLE)/release/lib$(KERNEL).a
+	ld --gc-sections -n -o target/$(KERNEL).bin -T $(CFGDIR)/linker.ld target/boot.o target/$(TRIPLE)/release/lib$(KERNEL).a
 
 target/$(KERNEL).iso: target/$(KERNEL).bin
 	mkdir -p target/$(ISODIR)
