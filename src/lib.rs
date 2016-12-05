@@ -1,3 +1,6 @@
+//! Hanami kernel.
+
+#![deny(missing_docs)]
 #![feature(static_in_const)]
 #![feature(lang_items)]
 #![feature(const_fn)]
@@ -29,9 +32,10 @@ extern "C" fn rust_begin_panic() -> ! {
     loop {}
 }
 
+/// Main entry point.
 #[no_mangle]
 pub extern "C" fn kmain() -> ! {
-    let COM1 = SerialDevice::new(serial::COM1);
-    device_write!(COM1, "Hello, world!");
+    let serial0 = SerialDevice::new(serial::SERIAL0);
+    device_write!(serial0, "Hello, world!");
     loop {}
 }

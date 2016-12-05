@@ -1,49 +1,50 @@
+#![allow(dead_code)]
+
 use core::ops::Deref;
 use spin::Mutex;
-use rcstring::{c_char, CString};
+use rcstring::CString;
 
-/// Next device id.
-static mut next_device_id: usize = 0_usize;
-
-macro_rules! device_write {
-    ($dev:expr, $buf:expr) => ($crate::device::DeviceWrite::write(&$dev.dev, &$dev.info, $buf));
+macro_rules! device_read {
+    ($dev:expr, $buf:expr) => ($crate::device::DeviceRead::read(&$dev.proto, &$dev.info, $buf));
 }
 
-/// Device type.
-pub enum DeviceType {
+macro_rules! device_write {
+    ($dev:expr, $buf:expr) => ($crate::device::DeviceWrite::write(&$dev.proto, &$dev.info, $buf));
+}
+
+/// Next device id.
+static mut NEXT_DEVICE_ID: Mutex<usize> = Mutex::new(0_usize);
+
+/// Device kind.
+pub enum DeviceKind {
     BlockDevice = 0,
     CharsDevice = 1,
 }
 
 /// Device information.
 pub struct DeviceInfo<'a> {
-    device_id: usize,
-    device_name: CString<'a>,
-    device_type: DeviceType,
+    id: usize,
+    name: CString<'a>,
+    kind: DeviceKind,
 }
 
 /// Device.
-pub struct Device<'a, T> {
-    pub dev: T,
+pub struct Device<'a, P> {
+    pub proto: P,
     pub info: DeviceInfo<'a>,
 }
 
-/// Implements `Deref` for `Device`.
-impl<'a, T> Deref for Device<'a, T> {
-    type Target = T;
-    fn deref(&self) -> &T {
-        &self.dev
-    }
-}
+/// Device manager.
+pub struct DeviceManager;
 
 /// Provides read functionality for devices.
-pub trait DeviceRead<T: Sized> {
-    fn read(&self, dev: &DeviceInfo, buf: T);
+pub trait DeviceRead<B: Sized> {
+    fn read(&self, dev: &DeviceInfo, buf: B);
 }
 
 /// Provides write functionality for devices.
-pub trait DeviceWrite<T: Sized> {
-    fn write(&self, dev: &DeviceInfo, buf: T);
+pub trait DeviceWrite<B: Sized> {
+    fn write(&self, dev: &DeviceInfo, buf: B);
 }
 
 /// Provides ioctl functionality for devices.
@@ -51,30 +52,39 @@ pub trait DeviceIoctl {
     fn ioctl(&self, dev: &DeviceInfo, arg1: i32, arg2: i32, arg3: i32);
 }
 
-/// Implements `Device`.
 impl<'a> DeviceInfo<'a> {
     /// Constructs a new `DeviceInfo`.
-    pub fn new(device_type: DeviceType, name: CString) -> DeviceInfo {
-        let id: usize;
-        unsafe {
-            id = next_device_id;
-            next_device_id += 1;
-        }
+    pub fn new(kind: DeviceKind, name: CString) -> DeviceInfo {
         DeviceInfo {
-            device_id: id,
-            device_name: name,
-            device_type: device_type,
+            id: DeviceInfo::get_next_id_safe(),
+            name: name,
+            kind: kind,
+        }
+    }
+    /// Gets the next device id in a thread-safe manner.
+    fn get_next_id_safe() -> usize {
+        unsafe {
+            let mut data = NEXT_DEVICE_ID.lock();
+            let id = *data;
+            *data += 1;
+            id
         }
     }
 }
 
-/// Implements `Device`.
-impl<'a, T> Device<'a, T> {
+impl<'a, P> Device<'a, P> {
     /// Constructs a new `Device`.
-    pub fn new(dev: T, dev_type: DeviceType, dev_name: CString) -> Device<T> {
+    pub fn new(proto: P, kind: DeviceKind, name: CString) -> Device<P> {
         Device {
-            dev: dev,
-            info: DeviceInfo::new(dev_type, dev_name),
+            proto: proto,
+            info: DeviceInfo::new(kind, name),
         }
+    }
+}
+
+impl<'a, P> Deref for Device<'a, P> {
+    type Target = P;
+    fn deref(&self) -> &P {
+        &self.proto
     }
 }

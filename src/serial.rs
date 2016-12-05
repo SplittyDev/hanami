@@ -2,10 +2,10 @@ use device::*;
 use rcstring::CString;
 use cpuio::{inb, outb};
 
-pub const COM1: u16 = 0x03F8;
-pub const COM2: u16 = 0x02F8;
-pub const COM3: u16 = 0x03E8;
-pub const COM4: u16 = 0x02E8;
+pub const SERIAL0: u16 = 0x03F8;
+pub const SERIAL1: u16 = 0x02F8;
+pub const SERIAL2: u16 = 0x03E8;
+pub const SERIAL3: u16 = 0x02E8;
 
 macro_rules! serial_ier { ($port:expr) => ($port + 0x01); }
 macro_rules! serial_data { ($port:expr) => ($port + 0x00); }
@@ -19,23 +19,19 @@ pub struct SerialDevice {
     port: u16,
 }
 
-/// Implements `SerialDevice`.
 impl SerialDevice {
     /// Constructs a new serial device.
     pub fn new<'a>(port: u16) -> Device<'a, SerialDevice> {
-        fn create_device<'a>(dev: SerialDevice) -> Device<'a, SerialDevice> {
-            let name = match dev.port {
-                COM1 => cstr!("ttyS0"),
-                COM2 => cstr!("ttyS1"),
-                COM3 => cstr!("ttyS2"),
-                COM4 => cstr!("ttyS3"),
-                _ => unreachable!(),
-            };
-            Device::new(dev, DeviceType::CharsDevice, name)
-        }
+        let name = match port {
+            SERIAL0 => cstr!("serial0"),
+            SERIAL1 => cstr!("serial1"),
+            SERIAL2 => cstr!("serial2"),
+            SERIAL3 => cstr!("serial3"),
+            _ => unreachable!(),
+        };
         let dev = SerialDevice { port: port };
         dev.initialize();
-        create_device(dev)
+        Device::new(dev, DeviceKind::CharsDevice, name)
     }
     /// Initializes the serial port.
     fn initialize(&self) {
@@ -66,18 +62,30 @@ impl SerialDevice {
     }
 }
 
-/// Implements `SerialWrite<&str>` for `SerialDevice`.
+impl DeviceWrite<u8> for SerialDevice {
+    fn write(&self, _: &DeviceInfo, b: u8) {
+        self.write_byte(b);
+    }
+}
+
+impl<'a> DeviceWrite<&'a [u8]> for SerialDevice {
+    fn write(&self, _: &DeviceInfo, buf: &'a [u8]) {
+        for b in buf {
+            self.write_byte(*b);
+        }
+    }
+}
+
 impl<'a> DeviceWrite<&'a str> for SerialDevice {
-    fn write(&self, dev: &DeviceInfo, buf: &'a str) {
+    fn write(&self, _: &DeviceInfo, buf: &'a str) {
         for b in buf.bytes() {
             self.write_byte(b);
         }
     }
 }
 
-/// Implements `SerialWrite<CString>` for `SerialDevice`.
 impl<'a> DeviceWrite<CString<'a>> for SerialDevice {
-    fn write(&self, dev: &DeviceInfo, buf: CString<'a>) {
+    fn write(&self, _: &DeviceInfo, buf: CString<'a>) {
         let ptr = unsafe { buf.into_raw() };
         for i in 0..buf.len() {
             let b = unsafe { ptr.offset(i as isize) };
