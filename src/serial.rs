@@ -1,5 +1,4 @@
 use device::*;
-use rcstring::CString;
 use cpuio::{inb, outb};
 
 pub const SERIAL0: u16 = 0x03F8;
@@ -23,10 +22,10 @@ impl SerialDevice {
     /// Constructs a new serial device.
     pub fn new<'a>(port: u16) -> Device<'a, SerialDevice> {
         let name = match port {
-            SERIAL0 => cstr!("serial0"),
-            SERIAL1 => cstr!("serial1"),
-            SERIAL2 => cstr!("serial2"),
-            SERIAL3 => cstr!("serial3"),
+            SERIAL0 => "serial0",
+            SERIAL1 => "serial1",
+            SERIAL2 => "serial2",
+            SERIAL3 => "serial3",
             _ => unreachable!(),
         };
         let dev = SerialDevice { port: port };
@@ -65,34 +64,8 @@ impl SerialDevice {
     }
 }
 
-impl DeviceWrite<u8> for SerialDevice {
-    fn write(&self, _: &DeviceInfo, b: u8) {
+impl DeviceWrite for SerialDevice {
+    fn write_byte(&self, _: &DeviceInfo, b: u8) {
         self.write_byte(b);
-    }
-}
-
-impl<'a> DeviceWrite<&'a [u8]> for SerialDevice {
-    fn write(&self, _: &DeviceInfo, buf: &'a [u8]) {
-        for b in buf {
-            self.write_byte(*b);
-        }
-    }
-}
-
-impl<'a> DeviceWrite<&'a str> for SerialDevice {
-    fn write(&self, _: &DeviceInfo, buf: &'a str) {
-        for b in buf.bytes() {
-            self.write_byte(b);
-        }
-    }
-}
-
-impl<'a> DeviceWrite<CString<'a>> for SerialDevice {
-    fn write(&self, _: &DeviceInfo, buf: CString<'a>) {
-        let ptr = unsafe { buf.into_raw() };
-        for i in 0..buf.len() {
-            let b = unsafe { ptr.offset(i as isize) };
-            self.write_byte(unsafe { *b } as u8);
-        }
     }
 }

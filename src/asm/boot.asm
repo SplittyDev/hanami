@@ -38,6 +38,7 @@ bits 32
 start:
     cli
     mov esp, stack.top
+    mov edi, ebx
 
 ;
 ; Paging magic.

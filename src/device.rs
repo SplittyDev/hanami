@@ -1,18 +1,14 @@
 #![allow(dead_code)]
 
+use core::{self, fmt};
 use spin::Mutex;
-use rcstring::CString;
-
-macro_rules! device_read {
-    ($dev:expr, $buf:expr) => {
-        $crate::device::DeviceRead::read(*(&$dev.proto).lock(), &$dev.info, $buf);
-    };
-}
 
 macro_rules! device_write {
-    ($dev:expr, $buf:expr) => {
-        $crate::device::DeviceWrite::write(&*(&$dev.proto).lock(), &$dev.info, $buf);
-    };
+    ($dev:expr $(,$arg:expr)*) => ({
+        use core::fmt::Write;
+        let mut writer = $dev.lock();
+        writer.write_fmt(format_args!($($arg,)*)).unwrap();
+    });
 }
 
 /// Next device id.
@@ -27,13 +23,13 @@ pub enum DeviceKind {
 /// Device information.
 pub struct DeviceInfo<'a> {
     id: usize,
-    name: CString<'a>,
+    name: &'a str,
     kind: DeviceKind,
 }
 
 /// Device.
 pub struct Device<'a, P> {
-    pub proto: Mutex<P>,
+    pub proto: P,
     pub info: DeviceInfo<'a>,
 }
 
@@ -41,13 +37,14 @@ pub struct Device<'a, P> {
 pub struct DeviceManager;
 
 /// Provides read functionality for devices.
-pub trait DeviceRead<B> {
-    fn read(&self, dev: &DeviceInfo, buf: B);
+pub trait DeviceRead {
+    fn read_byte(&self, dev: &DeviceInfo) -> u8;
+    fn read_chunk(&self, dev: &DeviceInfo, buf: &[u8], size: usize);
 }
 
 /// Provides write functionality for devices.
-pub trait DeviceWrite<B> {
-    fn write(&self, dev: &DeviceInfo, buf: B);
+pub trait DeviceWrite {
+    fn write_byte(&self, dev: &DeviceInfo, b: u8);
 }
 
 /// Provides ioctl functionality for devices.
@@ -58,7 +55,7 @@ pub trait DeviceIoctl {
 
 impl<'a> DeviceInfo<'a> {
     /// Constructs a new `DeviceInfo`.
-    pub fn new(kind: DeviceKind, name: CString) -> DeviceInfo {
+    pub fn new(kind: DeviceKind, name: &str) -> DeviceInfo {
         DeviceInfo {
             id: DeviceInfo::get_next_id_safe(),
             name: name,
@@ -78,10 +75,28 @@ impl<'a> DeviceInfo<'a> {
 
 impl<'a, P> Device<'a, P> {
     /// Constructs a new `Device`.
-    pub fn new(proto: P, kind: DeviceKind, name: CString) -> Device<P> {
+    pub fn new(proto: P, kind: DeviceKind, name: &'a str) -> Device<P> {
         Device {
-            proto: Mutex::new(proto),
+            proto: proto,
             info: DeviceInfo::new(kind, name),
         }
+    }
+}
+
+impl<'a, P> fmt::Write for Device<'a, P>
+    where P: DeviceWrite
+{
+    fn write_str(&mut self, string: &str) -> fmt::Result {
+        for b in string.bytes() {
+            self.write_byte(&self.info, b);
+        }
+        Ok(())
+    }
+}
+
+impl<'a, P> core::ops::Deref for Device<'a, P> {
+    type Target = P;
+    fn deref(&self) -> &P {
+        &self.proto
     }
 }
