@@ -34,6 +34,7 @@ impl SerialDevice {
         Device::new(dev, DeviceKind::CharsDevice, name)
     }
     /// Initializes the serial port.
+    #[inline]
     fn initialize(&self) {
         unsafe {
             outb(0x00, serial_ier!(self.port));
@@ -46,6 +47,7 @@ impl SerialDevice {
         }
     }
     /// Waits till the serial port is ready.
+    #[inline]
     fn await_ready_state(&self) {
         loop {
             if unsafe { inb(self.port + 0x05) } & 0x20 != 0 {
@@ -54,6 +56,7 @@ impl SerialDevice {
         }
     }
     /// Writes a byte to the serial port.
+    #[inline]
     fn write_byte(&self, b: u8) {
         self.await_ready_state();
         unsafe {

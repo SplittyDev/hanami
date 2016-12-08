@@ -15,9 +15,9 @@ extern crate rcstring;
 #[macro_use]
 extern crate lazy_static;
 
+mod heap;
 #[macro_use]
 mod console;
-use console::CONSOLE;
 #[macro_use]
 mod device;
 mod serial;

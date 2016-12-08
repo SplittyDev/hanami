@@ -1,15 +1,18 @@
 #![allow(dead_code)]
 
-use core::ops::Deref;
 use spin::Mutex;
 use rcstring::CString;
 
 macro_rules! device_read {
-    ($dev:expr, $buf:expr) => ($crate::device::DeviceRead::read(&$dev.proto, &$dev.info, $buf));
+    ($dev:expr, $buf:expr) => {
+        $crate::device::DeviceRead::read(*(&$dev.proto).lock(), &$dev.info, $buf);
+    };
 }
 
 macro_rules! device_write {
-    ($dev:expr, $buf:expr) => ($crate::device::DeviceWrite::write(&$dev.proto, &$dev.info, $buf));
+    ($dev:expr, $buf:expr) => {
+        $crate::device::DeviceWrite::write(&*(&$dev.proto).lock(), &$dev.info, $buf);
+    };
 }
 
 /// Next device id.
@@ -30,7 +33,7 @@ pub struct DeviceInfo<'a> {
 
 /// Device.
 pub struct Device<'a, P> {
-    pub proto: P,
+    pub proto: Mutex<P>,
     pub info: DeviceInfo<'a>,
 }
 
@@ -38,17 +41,18 @@ pub struct Device<'a, P> {
 pub struct DeviceManager;
 
 /// Provides read functionality for devices.
-pub trait DeviceRead<B: Sized> {
+pub trait DeviceRead<B> {
     fn read(&self, dev: &DeviceInfo, buf: B);
 }
 
 /// Provides write functionality for devices.
-pub trait DeviceWrite<B: Sized> {
+pub trait DeviceWrite<B> {
     fn write(&self, dev: &DeviceInfo, buf: B);
 }
 
 /// Provides ioctl functionality for devices.
 pub trait DeviceIoctl {
+    // TODO: Rethink this.
     fn ioctl(&self, dev: &DeviceInfo, arg1: i32, arg2: i32, arg3: i32);
 }
 
@@ -76,15 +80,8 @@ impl<'a, P> Device<'a, P> {
     /// Constructs a new `Device`.
     pub fn new(proto: P, kind: DeviceKind, name: CString) -> Device<P> {
         Device {
-            proto: proto,
+            proto: Mutex::new(proto),
             info: DeviceInfo::new(kind, name),
         }
-    }
-}
-
-impl<'a, P> Deref for Device<'a, P> {
-    type Target = P;
-    fn deref(&self) -> &P {
-        &self.proto
     }
 }

@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+
 use core::fmt;
 use core::ptr::Unique;
 use spin::Mutex;
