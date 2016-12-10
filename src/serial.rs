@@ -1,9 +1,13 @@
 use device::*;
 use cpuio::{inb, outb};
 
+#[allow(dead_code)]
 pub const SERIAL0: u16 = 0x03F8;
+#[allow(dead_code)]
 pub const SERIAL1: u16 = 0x02F8;
+#[allow(dead_code)]
 pub const SERIAL2: u16 = 0x03E8;
+#[allow(dead_code)]
 pub const SERIAL3: u16 = 0x02E8;
 
 macro_rules! serial_ier { ($port:expr) => ($port + 0x01); }
@@ -20,17 +24,10 @@ pub struct SerialDevice {
 
 impl SerialDevice {
     /// Constructs a new serial device.
-    pub fn new<'a>(port: u16) -> Device<'a, SerialDevice> {
-        let name = match port {
-            SERIAL0 => "serial0",
-            SERIAL1 => "serial1",
-            SERIAL2 => "serial2",
-            SERIAL3 => "serial3",
-            _ => unreachable!(),
-        };
-        let dev = SerialDevice { port: port };
-        dev.initialize();
-        Device::new(dev, DeviceKind::CharsDevice, name)
+    pub fn new(port: u16) -> Self {
+        let device = SerialDevice { port: port };
+        device.initialize();
+        device
     }
     /// Initializes the serial port.
     #[inline]
@@ -65,7 +62,7 @@ impl SerialDevice {
 }
 
 impl DeviceWrite for SerialDevice {
-    fn write_byte(&self, _: &DeviceInfo, b: u8) {
-        self.write_byte(b);
+    fn write_byte(&mut self, _: &DeviceInfo, b: u8) {
+        SerialDevice::write_byte(self, b);
     }
 }

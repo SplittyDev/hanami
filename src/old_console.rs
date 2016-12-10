@@ -15,14 +15,6 @@ const BUFFER_HEIGHT: usize = 25;
 /// The buffer size.
 const BUFFER_SIZE: usize = BUFFER_WIDTH * BUFFER_HEIGHT;
 
-/// A static textmode writer.
-pub static CONSOLE: Mutex<TextWriter> = Mutex::new(TextWriter {
-    x: 0,
-    y: 0,
-    color: CompositeColor::new(Color::DarkGray, Color::Black),
-    buffer: unsafe { Unique::new(0xB8000 as *mut _) },
-});
-
 macro_rules! print {
     ($($arg:tt)*) => ({
         use core::fmt::Write;
@@ -106,7 +98,16 @@ pub struct TextWriter {
 
 /// Implements `TextWriter`.
 impl TextWriter {
-    /// Binds the console.
+    /// Constructs a new `TextWriter`.
+    pub fn new() -> TextWriter {
+        TextWriter {
+            x: 0,
+            y: 0,
+            color: CompositeColor::new(Color::DarkGray, Color::Black),
+            buffer: unsafe { Unique::new(0xB8000 as *mut _) },
+        }
+    }
+    /// Binds the writer.
     pub fn bind<F>(&mut self, f: F)
         where F: FnOnce(&mut TextWriter)
     {

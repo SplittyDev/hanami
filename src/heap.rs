@@ -22,7 +22,6 @@ pub struct Heap {
 }
 
 impl Heap {
-    /// Constructs a new `Heap`.
     pub fn new(end_of_kernel: usize) -> Self {
         let addr = Self::align(end_of_kernel) as *mut u8;
         klog!("Heap pointer: {:p}", addr);
@@ -42,7 +41,6 @@ impl Heap {
             None => None,
         }
     }
-    /// Allocates a chunk of memory.
     fn kalloc(&mut self, size: usize) -> Option<*mut u8> {
         let new_block = {
             if let Some(block) = self.internal_get_block(size) {
@@ -79,7 +77,7 @@ impl Heap {
             let real = aligned - guard_size;
             let sys_loss = ((sys - size) * 100) / sys;
             let real_loss = ((real - size) * 100) / real;
-            klog!("[Heap:_alloc] Req: {}; Alloc: ({} sys; {} real); Loss: ({}% sys; {}% real)",
+            klog!("[kalloc] req={} alloc=[sys={} real={}] loss=[sys={} real={}]",
                   size,
                   sys,
                   real,
@@ -118,7 +116,6 @@ impl Heap {
         }
         None
     }
-    /// Aligns an address.
     fn align(addr: usize) -> usize {
         (addr % ALIGN) + addr
     }

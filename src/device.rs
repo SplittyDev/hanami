@@ -14,13 +14,18 @@ macro_rules! device_write {
 /// Next device id.
 static mut NEXT_DEVICE_ID: Mutex<usize> = Mutex::new(0_usize);
 
+/// Thread-safe `device::Device<T>` wrapped in a `spin::Mutex`.
+pub type ThreadSafeDevice<T> = Mutex<Device<'static, T>>;
+
 /// Device kind.
+#[derive(Clone)]
 pub enum DeviceKind {
     BlockDevice = 0,
     CharsDevice = 1,
 }
 
 /// Device information.
+#[derive(Clone)]
 pub struct DeviceInfo<'a> {
     id: usize,
     name: &'a str,
@@ -44,7 +49,7 @@ pub trait DeviceRead {
 
 /// Provides write functionality for devices.
 pub trait DeviceWrite {
-    fn write_byte(&self, dev: &DeviceInfo, b: u8);
+    fn write_byte(&mut self, dev: &DeviceInfo, b: u8);
 }
 
 /// Provides ioctl functionality for devices.
@@ -87,8 +92,9 @@ impl<'a, P> fmt::Write for Device<'a, P>
     where P: DeviceWrite
 {
     fn write_str(&mut self, string: &str) -> fmt::Result {
+        let info: DeviceInfo = self.info.clone();
         for b in string.bytes() {
-            self.write_byte(&self.info, b);
+            DeviceWrite::write_byte(&mut self.proto, &info, b);
         }
         Ok(())
     }
