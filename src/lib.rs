@@ -38,6 +38,7 @@ macro_rules! println {
 #[macro_use]
 mod device;
 mod heap;
+mod pic;
 mod serial;
 mod terminal;
 
@@ -69,6 +70,7 @@ device!(ktty0,
 pub extern "C" fn kmain(mb_addr: usize) -> ! {
     let boot_info = unsafe { multiboot2::load(mb_addr) };
     let mut heap: heap::Heap = heap::Heap::new(boot_info.end_address());
+    pic::PIC::remap();
     println!("Hello from Hanami!");
     loop {}
 }
