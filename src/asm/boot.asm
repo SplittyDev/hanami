@@ -105,7 +105,25 @@ setup_gdt:
     mov ds, ax
     mov es, ax
     mov ss, ax
-    jmp gdt64._code:kmain
+    jmp gdt64._code:enable_sse
+
+;
+; Enables SSE.
+;
+enable_sse:
+    mov eax, cr0
+    and ax, 0xFFFB
+    or ax, 0x2
+    mov cr0, eax
+    mov eax, cr4
+    or ax, 0x600
+    mov cr4, eax
+
+;
+; Jumps into the Rust kernel.
+;
+enter_kernel:
+    jmp kmain
 
 section .rodata
 ;
